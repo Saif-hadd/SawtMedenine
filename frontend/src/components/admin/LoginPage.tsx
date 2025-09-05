@@ -157,11 +157,13 @@ export const LoginPage: React.FC = () => {
             </form>
 
             {/* Demo Credentials */}
-            <div className="mt-6 p-4 bg-gray-50 rounded-lg border">
-              <p className="text-xs text-gray-600 mb-2 font-medium">Identifiants de démonstration:</p>
-              <p className="text-xs text-gray-500">Email: admin@medenine.tn</p>
-              <p className="text-xs text-gray-500">Mot de passe: Admin123!Medenine</p>
-            </div>
+            {/* Demo Credentials */}
+<div className="mt-6 p-4 bg-gray-50 rounded-lg border">
+  <p className="text-xs text-gray-600 mb-2 font-medium">Identifiants de démonstration:</p>
+  <p className="text-xs text-gray-500">Email: admin@medenine.tn</p>
+  <p className="text-xs text-gray-500">Mot de passe: Admin4100Medenine@!</p>
+</div>
+
           </motion.div>
 
           {/* Back to public */}
