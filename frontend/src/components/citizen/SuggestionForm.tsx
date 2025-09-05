@@ -26,9 +26,9 @@ export const SuggestionForm: React.FC = () => {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const maxSize = 10 * 1024 * 1024; // 10MB
+      const maxSize = 5 * 1024 * 1024; // 5MB (selon le backend)
       if (file.size > maxSize) {
-        showToast('error', 'Le fichier ne doit pas dépasser 10MB');
+        showToast('error', 'Le fichier ne doit pas dépasser 5MB');
         return;
       }
       
@@ -53,7 +53,7 @@ export const SuggestionForm: React.FC = () => {
         type: data.type,
         subject: AuthService.sanitizeInput(data.subject),
         description: AuthService.sanitizeInput(data.description),
-        attachment: selectedFile || undefined
+        file: selectedFile || undefined
       };
 
       const { data: suggestion, error } = await SuggestionService.create(sanitizedData);
@@ -66,6 +66,12 @@ export const SuggestionForm: React.FC = () => {
       showToast('success', 'Votre demande a été envoyée avec succès!');
       reset();
       setSelectedFile(null);
+      
+      // Réinitialiser le champ file
+      const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+      if (fileInput) {
+        fileInput.value = '';
+      }
       
     } catch (err) {
       showToast('error', 'Une erreur inattendue s\'est produite');
@@ -102,7 +108,8 @@ export const SuggestionForm: React.FC = () => {
                 type="text"
                 {...register('name', { 
                   required: 'Le nom est requis',
-                  minLength: { value: 2, message: 'Le nom doit contenir au moins 2 caractères' }
+                  minLength: { value: 2, message: 'Le nom doit contenir au moins 2 caractères' },
+                  maxLength: { value: 100, message: 'Le nom ne peut pas dépasser 100 caractères' }
                 })}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
                 placeholder="Votre nom complet"
@@ -126,7 +133,8 @@ export const SuggestionForm: React.FC = () => {
                   pattern: {
                     value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
                     message: 'Adresse email invalide'
-                  }
+                  },
+                  maxLength: { value: 255, message: 'L\'email ne peut pas dépasser 255 caractères' }
                 })}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
                 placeholder="votre.email@example.com"
@@ -149,14 +157,14 @@ export const SuggestionForm: React.FC = () => {
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   className={`relative cursor-pointer border-2 rounded-lg p-4 transition-all duration-200 ${
-                    watchType === 'suggestion' 
+                    watchType === 'Suggestion' 
                       ? 'border-green-500 bg-green-50' 
                       : 'border-gray-300 hover:border-gray-400'
                   }`}
                 >
                   <input
                     type="radio"
-                    value="suggestion"
+                    value="Suggestion"
                     {...register('type', { required: 'Veuillez sélectionner un type' })}
                     className="sr-only"
                   />
@@ -173,14 +181,14 @@ export const SuggestionForm: React.FC = () => {
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   className={`relative cursor-pointer border-2 rounded-lg p-4 transition-all duration-200 ${
-                    watchType === 'complaint' 
+                    watchType === 'Réclamation' 
                       ? 'border-orange-500 bg-orange-50' 
                       : 'border-gray-300 hover:border-gray-400'
                   }`}
                 >
                   <input
                     type="radio"
-                    value="complaint"
+                    value="Réclamation"
                     {...register('type', { required: 'Veuillez sélectionner un type' })}
                     className="sr-only"
                   />
@@ -210,7 +218,8 @@ export const SuggestionForm: React.FC = () => {
                 type="text"
                 {...register('subject', { 
                   required: 'Le sujet est requis',
-                  minLength: { value: 5, message: 'Le sujet doit contenir au moins 5 caractères' }
+                  minLength: { value: 5, message: 'Le sujet doit contenir au moins 5 caractères' },
+                  maxLength: { value: 200, message: 'Le sujet ne peut pas dépasser 200 caractères' }
                 })}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
                 placeholder="Résumez votre demande en quelques mots"
@@ -231,7 +240,8 @@ export const SuggestionForm: React.FC = () => {
               <textarea
                 {...register('description', { 
                   required: 'La description est requise',
-                  minLength: { value: 20, message: 'La description doit contenir au moins 20 caractères' }
+                  minLength: { value: 10, message: 'La description doit contenir au moins 10 caractères' },
+                  maxLength: { value: 2000, message: 'La description ne peut pas dépasser 2000 caractères' }
                 })}
                 rows={5}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 resize-none"
@@ -265,7 +275,7 @@ export const SuggestionForm: React.FC = () => {
                     />
                   </label>
                   <p className="text-xs text-gray-500 mt-1">
-                    PNG, JPG, PDF (max 10MB)
+                    PNG, JPG, PDF (max 5MB)
                   </p>
                 </div>
                 
