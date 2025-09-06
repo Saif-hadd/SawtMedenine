@@ -56,7 +56,7 @@ const corsOptions = {
       process.env.FRONTEND_URL || 'http://localhost:3000',
       'http://localhost:3000',
       'http://localhost:5173',
-      'https://medenine-portal.netlify.app', // Exemple de domaine de production
+      'https://sawt-medenine.vercel.app', // Exemple de domaine de production
     ];
 
     if (allowedOrigins.indexOf(origin) !== -1) {
