@@ -38,7 +38,7 @@ export const CitizenPage: React.FC = () => {
   ];
 
   return (
-    <Layout title="Suggestions & Réclamations">
+    <Layout title="SawtMedenine">
       {/* Hero Section with Background */}
       <section className="relative mb-16 -mt-8 pt-16 pb-20 overflow-hidden">
         {/* Background Image */}
