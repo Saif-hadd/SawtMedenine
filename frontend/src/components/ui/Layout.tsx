@@ -55,7 +55,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, title, isAdmin = false
                 >
                   <MapPin className="h-4 w-4 drop-shadow" />
                   <span className="text-sm font-medium">Ville de Médenine, Tunisie</span>
-                </motion.div> {/* ✅ fermeture corrigée */}
+                </motion.div>
               </div>
             </motion.div>
             {!isAdmin && (
