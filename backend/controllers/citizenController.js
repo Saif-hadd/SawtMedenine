@@ -5,6 +5,7 @@
 
 const Submission = require('../models/Submission');
 const { uploadFile } = require('../config/cloudinary');
+const sendDiscordNotification = require('../utils/discordWebhook');
 
 /**
  * Soumettre une nouvelle suggestion ou réclamation
@@ -32,10 +33,7 @@ const submitSuggestion = async (req, res) => {
       try {
         console.log(`📎 Upload du fichier: ${file.originalname}`);
         
-        // Déterminer le type de ressource pour Cloudinary
         const resourceType = file.mimetype === 'application/pdf' ? 'raw' : 'image';
-        
-        // Upload vers Cloudinary
         const uploadResult = await uploadFile(file.buffer, file.originalname, resourceType);
         
         if (uploadResult.success) {
@@ -46,12 +44,10 @@ const submitSuggestion = async (req, res) => {
             fileType: resourceType,
             fileSize: file.size
           };
-          
           console.log(`✅ Fichier uploadé: ${uploadResult.url}`);
         } else {
           throw new Error('Échec de l\'upload du fichier');
         }
-        
       } catch (uploadError) {
         console.error('❌ Erreur upload fichier:', uploadError);
         return res.status(500).json({
@@ -68,10 +64,20 @@ const submitSuggestion = async (req, res) => {
 
     console.log(`✅ Soumission créée avec succès: ${submission._id}`);
 
+    // Envoyer notification Discord
+    await sendDiscordNotification({
+      type: submission.type,
+      name: submission.name,
+      email: submission.email,
+      subject: submission.subject,
+      message: submission.description,
+      dashboardUrl: 'https://sawt-medenine.vercel.app/admin' // lien vers dashboard admin
+    });
+
     // Réponse de succès
     res.status(201).json({
       success: true,
-      message: 'Votre demande a été soumise avec succès. Nous vous remercions pour votre participation citoyenne.',
+      message: 'Votre demande a été soumise avec succès. Merci pour votre participation citoyenne.',
       data: {
         id: submission._id,
         type: submission.type,
@@ -82,13 +88,11 @@ const submitSuggestion = async (req, res) => {
       }
     });
 
-    // Log pour suivi administratif
     console.log(`📊 Nouvelle ${submission.type.toLowerCase()} de ${submission.name}: "${submission.subject}"`);
 
   } catch (error) {
     console.error('❌ Erreur création soumission:', error);
 
-    // Gestion des erreurs de validation Mongoose
     if (error.name === 'ValidationError') {
       const validationErrors = Object.values(error.errors).map(err => ({
         field: err.path,
@@ -103,7 +107,6 @@ const submitSuggestion = async (req, res) => {
       });
     }
 
-    // Erreur générique
     res.status(500).json({
       success: false,
       message: 'Une erreur interne s\'est produite. Veuillez réessayer plus tard.',
@@ -113,7 +116,7 @@ const submitSuggestion = async (req, res) => {
 };
 
 /**
- * Obtenir les statistiques publiques (optionnel)
+ * Obtenir les statistiques publiques
  * GET /api/citizen/stats
  */
 const getPublicStats = async (req, res) => {
@@ -122,35 +125,14 @@ const getPublicStats = async (req, res) => {
 
     const stats = await Submission.getStats();
 
-    // Calculer le taux de résolution
     const resolutionRate = stats.total > 0 
       ? Math.round((stats.traite / stats.total) * 100) 
       : 0;
 
-    // Calculer la moyenne de traitement (approximative)
     const avgProcessingTime = await Submission.aggregate([
-      {
-        $match: {
-          status: 'Traité',
-          processedAt: { $exists: true }
-        }
-      },
-      {
-        $project: {
-          processingTime: {
-            $divide: [
-              { $subtract: ['$processedAt', '$createdAt'] },
-              1000 * 60 * 60 * 24 // Convertir en jours
-            ]
-          }
-        }
-      },
-      {
-        $group: {
-          _id: null,
-          avgDays: { $avg: '$processingTime' }
-        }
-      }
+      { $match: { status: 'Traité', processedAt: { $exists: true } } },
+      { $project: { processingTime: { $divide: [{ $subtract: ['$processedAt', '$createdAt'] }, 1000 * 60 * 60 * 24] } } },
+      { $group: { _id: null, avgDays: { $avg: '$processingTime' } } }
     ]);
 
     const avgDays = avgProcessingTime.length > 0 
@@ -167,16 +149,11 @@ const getPublicStats = async (req, res) => {
       lastUpdated: new Date().toISOString()
     };
 
-    res.json({
-      success: true,
-      data: publicStats
-    });
-
+    res.json({ success: true, data: publicStats });
     console.log('✅ Statistiques publiques envoyées');
 
   } catch (error) {
     console.error('❌ Erreur récupération statistiques:', error);
-    
     res.status(500).json({
       success: false,
       message: 'Erreur lors de la récupération des statistiques.',
@@ -186,16 +163,14 @@ const getPublicStats = async (req, res) => {
 };
 
 /**
- * Vérifier le statut d'une soumission (optionnel)
+ * Vérifier le statut d'une soumission
  * GET /api/citizen/submission/:id/status
  */
 const checkSubmissionStatus = async (req, res) => {
   try {
     const { id } = req.params;
-    
     console.log(`🔍 Vérification statut soumission: ${id}`);
 
-    // Rechercher la soumission (informations limitées pour la confidentialité)
     const submission = await Submission.findById(id)
       .select('type subject status createdAt updatedAt')
       .lean();
@@ -248,28 +223,13 @@ const checkSubmissionStatus = async (req, res) => {
 const getSubmissionTypes = async (req, res) => {
   try {
     const types = [
-      {
-        value: 'Suggestion',
-        label: 'Suggestion',
-        description: 'Proposer une amélioration ou une nouvelle idée',
-        icon: '💡'
-      },
-      {
-        value: 'Réclamation',
-        label: 'Réclamation',
-        description: 'Signaler un problème ou dysfonctionnement',
-        icon: '🚨'
-      }
+      { value: 'Suggestion', label: 'Suggestion', description: 'Proposer une amélioration ou une idée', icon: '💡' },
+      { value: 'Réclamation', label: 'Réclamation', description: 'Signaler un problème ou dysfonctionnement', icon: '🚨' }
     ];
 
-    res.json({
-      success: true,
-      data: types
-    });
-
+    res.json({ success: true, data: types });
   } catch (error) {
     console.error('❌ Erreur récupération types:', error);
-    
     res.status(500).json({
       success: false,
       message: 'Erreur lors de la récupération des types.',
@@ -284,9 +244,7 @@ const getSubmissionTypes = async (req, res) => {
  */
 const healthCheck = async (req, res) => {
   try {
-    // Vérifier la connexion à la base de données
     const dbStatus = await Submission.countDocuments({});
-    
     res.json({
       success: true,
       message: 'Service citoyen opérationnel',
@@ -297,18 +255,12 @@ const healthCheck = async (req, res) => {
         totalSubmissions: dbStatus
       }
     });
-
   } catch (error) {
     console.error('❌ Erreur health check:', error);
-    
     res.status(503).json({
       success: false,
       message: 'Service temporairement indisponible',
-      data: {
-        status: 'unhealthy',
-        timestamp: new Date().toISOString(),
-        database: 'disconnected'
-      }
+      data: { status: 'unhealthy', timestamp: new Date().toISOString(), database: 'disconnected' }
     });
   }
 };
